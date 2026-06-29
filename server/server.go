@@ -2,6 +2,7 @@ package server
 
 import (
 	"My-todo-app/handler"
+	"My-todo-app/middleware"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -14,6 +15,7 @@ func SetUpRoutes() http.Handler {
 	r.Post("/login", handler.LoginUser)
 
 	r.Group(func(r chi.Router) {
+		r.Use(middleware.Authenticate)
 
 		r.Route("/todo", func(r chi.Router) {
 			r.Get("/", handler.GetAllTodos)

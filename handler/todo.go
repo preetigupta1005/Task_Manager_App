@@ -2,6 +2,7 @@ package handler
 
 import (
 	"My-todo-app/database/dbHelper"
+	"My-todo-app/middleware"
 	"My-todo-app/model"
 	"My-todo-app/utils"
 	"log"
@@ -13,7 +14,8 @@ import (
 )
 
 func GetAllTodos(w http.ResponseWriter, r *http.Request) {
-	todos, err := dbHelper.GetAllTodos()
+	userCtx := middleware.UserContext(r)
+	todos, err := dbHelper.GetAllTodos(userCtx.UserID)
 	if err != nil {
 		log.Println("Error:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -24,20 +26,21 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req model.TodoRequest
-
-	err := utils.ParseBody(r, &req)
-	if err != nil {
+	userCtx := middleware.UserContext(r)
+	req.UserID = userCtx.UserID
+	if err := utils.ParseBody(r, &req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse body")
 		return
 	}
 
 	req.Name = strings.TrimSpace(req.Name)
 
 	if req.Name == "" {
-		http.Error(w, "name cannot be empty", http.StatusBadRequest)
+		utils.RespondError(w, http.StatusBadRequest, nil, "name cannot be empty")
 		return
 	}
 
-	exists, err := dbHelper.TodoExists(req.Name)
+	exists, err := dbHelper.TodoExists(req.Name, req.UserID)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return

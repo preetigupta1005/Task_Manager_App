@@ -3,11 +3,10 @@ package model
 import "time"
 
 type User struct {
-	ID       string `db:"id" json:"id"`
-	Name     string `db:"name" json:"name"`
-	Email    string `db:"email" json:"email"`
-	Password string `db:"password" json:"-"`
-	
+	ID         string     `db:"id" json:"id"`
+	Name       string     `db:"name" json:"name"`
+	Email      string     `db:"email" json:"email"`
+	Password   string     `db:"password" json:"-"`
 	CreatedAt  time.Time  `db:"created_at" json:"createdAt"`
 	ArchivedAt *time.Time `db:"archived_at" json:"archivedAt"`
 }
@@ -21,4 +20,14 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type LoginData struct {
+	ID           string `db:"id"`
+	PasswordHash string `db:"password"`
+}
+
+type UserCtx struct {
+	UserID    string `json:"userId"`
+	SessionID string `json:"sessionId"`
 }

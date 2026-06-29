@@ -3,13 +3,14 @@ package dbHelper
 import (
 	"My-todo-app/database"
 	"My-todo-app/model"
+	"My-todo-app/utils"
 	"database/sql"
 	"errors"
 	"strings"
 )
 
 func CreateUser(req model.RegisterRequest) error {
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := utils.HashedPassword(req.Password)
 	if err != nil {
 		return err
 	}
