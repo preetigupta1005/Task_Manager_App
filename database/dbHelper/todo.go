@@ -8,19 +8,22 @@ import (
 	"strings"
 )
 
-func TodoExists(name string) (bool, error) {
+func TodoExists(name, userID string) (bool, error) {
 
-	query := " SELECT COUNT(id) > 0 FROM todos WHERE name = TRIM($1)"
+	query := `SELECT COUNT(id) > 0 FROM todos 
+              WHERE TRIM(LOWER(name)) = TRIM(LOWER($1)) 
+              AND user_id = $2
+              AND archived_at IS NULL`
 
 	var exists bool
 
-	err := database.DB.Get(&exists, query, name)
+	err := database.DB.Get(&exists, query, name, userID)
 
 	return exists, err
 }
-func GetAllTodos() ([]model.Todo, error) {
+func GetAllTodos(userID string) ([]model.Todo, error) {
 	todos := make([]model.Todo, 0)
-	err := database.DB.Select(&todos, "SELECT id,name,description,is_completed FROM  todos ORDER BY id DESC")
+	err := database.DB.Select(&todos, "SELECT id,name,description,is_completed,created_at, archived_at FROM  todos WHERE user_id=$1 ORDER BY id ASC", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,12 +37,13 @@ func CreateTodo(req model.TodoRequest) (model.Todo, error) {
 	args := []interface{}{
 		req.Name,
 		req.Description,
+		req.UserID,
 	}
 	var todo model.Todo
 	query := `
-		INSERT INTO todos (name, description)
-		VALUES ($1, $2)
-		RETURNING id, name, description, is_completed`
+		INSERT INTO todos (name, description,user_id)
+		VALUES ($1, $2,$3)
+		RETURNING id, name, description, is_completed,user_id, created_at,  archived_at`
 
 	err := database.DB.QueryRowx(query, args...).StructScan(&todo)
 	if errors.Is(err, sql.ErrNoRows) {

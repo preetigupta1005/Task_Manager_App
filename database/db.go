@@ -1,9 +1,14 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -37,7 +42,33 @@ func ConnectDB() error {
 	}
 
 	DB = db
+	err = migrateUp(DB)
+	if err != nil {
+		return err
+	}
 	log.Println("Connected to DB successfully")
+	return nil
+}
+
+func migrateUp(db *sqlx.DB) error {
+	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migration",
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return err
+	}
+
 	return nil
 }
 

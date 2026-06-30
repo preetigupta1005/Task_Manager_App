@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func CreateUser(w http.ResponseWriter, r *http.Request) {
+func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var userReq model.RegisterRequest
 	err := utils.ParseBody(r, &userReq)
 	if err != nil {

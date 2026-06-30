@@ -30,9 +30,13 @@ func RespondJSON(w http.ResponseWriter, statusCode int, body interface{}) {
 }
 
 func newClientError(err error, statusCode int, messageToUser string) *model.ClientError {
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
 	return &model.ClientError{
 		MessageToUser: messageToUser,
-		Err:           err.Error(),
+		Err:           errMsg,
 		StatusCode:    statusCode,
 	}
 }
