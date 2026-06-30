@@ -1,4 +1,4 @@
 .env
 pgdata/
 .idea/
-*.log
+*.loggit

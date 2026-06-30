@@ -2,6 +2,7 @@ package handler
 
 import (
 	"My-todo-app/database/dbHelper"
+	"My-todo-app/middleware"
 	"My-todo-app/model"
 	"My-todo-app/utils"
 	"net/http"
@@ -24,7 +25,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	saveErr := dbHelper.CreateUser(userReq)
-	if err != nil {
+	if saveErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, saveErr, "failed to create user")
 		return
 	}
@@ -57,7 +58,12 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, tokenErr := utils.GenerateJWT(user.ID)
+	sessionID, sessionErr := dbHelper.CreateUserSession(user.ID)
+	if sessionErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create session")
+		return
+	}
+	token, tokenErr := utils.GenerateJWT(user.ID, sessionID)
 	if tokenErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, tokenErr, "failed to generate token")
 		return
@@ -66,4 +72,17 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Token string `json:"token"`
 	}{token})
+}
+
+func LogoutUser(w http.ResponseWriter, r *http.Request) {
+	userCtx := middleware.UserContext(r)
+
+	if delErr := dbHelper.DeleteUserSession(userCtx.SessionID); delErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to logout")
+		return
+	}
+
+	utils.RespondJSON(w, http.StatusOK, struct {
+		Message string `json:"message"`
+	}{"logout successful"})
 }

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"My-todo-app/database/dbHelper"
 	"My-todo-app/model"
 	"My-todo-app/utils"
 	"context"
@@ -32,16 +33,31 @@ func Authenticate(next http.Handler) http.Handler {
 			utils.RespondError(w, http.StatusUnauthorized, err, "unauthorized")
 			return
 		}
-		// Step 3 — userID nikalo
+
 		claims := token.Claims.(jwt.MapClaims)
 		userID := claims["userId"].(string)
-		// Step 4 — context mein daalo
+		sessionID := claims["sessionId"].(string)
+
+		isValid, err := dbHelper.IsSessionValid(sessionID)
+
+		if err != nil {
+			utils.RespondError(w, http.StatusInternalServerError, err, "failed to validate session")
+			return
+		}
+
+		if !isValid {
+			utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+			return
+		}
+
 		userCtx := model.UserCtx{
-			UserID: userID,
+			UserID:    userID,
+			SessionID: sessionID,
 		}
 		ctx := context.WithValue(r.Context(), UserKey, userCtx)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+	
 }
 func UserContext(r *http.Request) model.UserCtx {
 	return r.Context().Value(UserKey).(model.UserCtx)

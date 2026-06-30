@@ -36,7 +36,7 @@ func IsUSerExist(email string) (bool, error) {
 
 func GetUserByEmail(email string) (model.User, error) {
 	var user model.User
-	query := `SELECT id, name, email, password 
+	query := `SELECT *
               FROM users 
               WHERE email=TRIM(LOWER($1)) 
               AND archived_at IS NULL`
@@ -48,4 +48,31 @@ func GetUserByEmail(email string) (model.User, error) {
 		return model.User{}, err
 	}
 	return user, nil
+}
+
+func CreateUserSession(userID string) (string, error) {
+	var sessionID string
+	query := `INSERT INTO user_session(user_id) 
+              VALUES ($1) RETURNING id`
+	err := database.DB.Get(&sessionID, query, userID)
+	return sessionID, err
+}
+
+func DeleteUserSession(sessionID string) error {
+	query := `UPDATE user_session
+              SET archived_at = NOW()
+              WHERE id = $1
+                AND archived_at IS NULL`
+	_, err := database.DB.Exec(query, sessionID)
+	return err
+}
+
+func IsSessionValid(sessionID string) (bool, error) {
+	var isValid bool
+	query := `SELECT count(id) > 0 
+              FROM user_session 
+              WHERE id = $1 
+                AND archived_at IS NULL`
+	err := database.DB.Get(&isValid, query, sessionID)
+	return isValid, err
 }

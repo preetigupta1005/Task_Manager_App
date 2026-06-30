@@ -5,9 +5,10 @@ import (
 	"My-todo-app/middleware"
 	"My-todo-app/model"
 	"My-todo-app/utils"
+	"database/sql"
+	"errors"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -60,9 +61,14 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetTodoById(w http.ResponseWriter, r *http.Request) {
-	idstr := chi.URLParam(r, "id")
-	id, _ := strconv.Atoi(idstr)
-	todo, err := dbHelper.GetTodoById(id)
+	id := chi.URLParam(r, "id")
+
+	userCtx := middleware.UserContext(r)
+	todo, err := dbHelper.GetTodoById(id, userCtx.UserID)
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.RespondError(w, http.StatusNotFound, nil, "todo not found")
+		return
+	}
 	if err != nil {
 		log.Println("Error:", err)
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to get todos")
@@ -72,15 +78,19 @@ func GetTodoById(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateTodo(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, _ := strconv.Atoi(idStr)
+	id := chi.URLParam(r, "id")
 
 	var req model.TodoRequest
 	err := utils.ParseBody(r, &req)
 	if err != nil {
 		return
 	}
-	todo, err := dbHelper.UpdateTodo(id, req)
+	userCtx := middleware.UserContext(r)
+	todo, err := dbHelper.UpdateTodo(id, userCtx.UserID, req)
+	if errors.Is(err, sql.ErrNoRows) {
+		utils.RespondError(w, http.StatusNotFound, nil, "todo not found")
+		return
+	}
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to get todos")
 		return
@@ -89,10 +99,10 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, _ := strconv.Atoi(idStr)
+	id := chi.URLParam(r, "id")
 
-	found, err := dbHelper.DeleteTodoById(id)
+	userCtx := middleware.UserContext(r)
+	found, err := dbHelper.DeleteTodoById(id, userCtx.UserID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to get todos")
 		return
@@ -105,12 +115,12 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 func MarkTodoAsCompleted(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, _ := strconv.Atoi(idStr)
-
-	todo, err := dbHelper.MarkTodoAsCompleted(id)
+	id := chi.URLParam(r, "id")
+	userCtx := middleware.UserContext(r)
+	todo, err := dbHelper.MarkTodoAsCompleted(id, userCtx.UserID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to complete todo")
+
 		return
 	}
 

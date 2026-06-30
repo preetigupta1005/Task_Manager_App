@@ -17,6 +17,8 @@ func SetUpRoutes() http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Authenticate)
 
+		r.Post("/logout", handler.LogoutUser)
+
 		r.Route("/todo", func(r chi.Router) {
 			r.Get("/", handler.GetAllTodos)
 			r.Post("/", handler.CreateTodo)
