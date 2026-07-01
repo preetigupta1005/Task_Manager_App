@@ -3,7 +3,6 @@ package database
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -20,8 +19,8 @@ var DB *sqlx.DB
 
 func ConnectDB() error {
 	err := godotenv.Load()
-	if err != nil {
-		log.Fatal(".env file not loaded:", err)
+	if err := godotenv.Load(); err != nil {
+		logrus.Warn(".env file not loaded:", err)
 	}
 
 	conStr := fmt.Sprintf(
@@ -47,7 +46,7 @@ func ConnectDB() error {
 	if err != nil {
 		return err
 	}
-	log.Println("Connected to DB successfully")
+	logrus.Print("Connected to DB successfully")
 	return nil
 }
 
@@ -74,11 +73,8 @@ func migrateUp(db *sqlx.DB) error {
 }
 
 // close connection
-func Close() {
-	err := DB.Close()
-	if err != nil {
-		log.Fatal("DB not closed:", err)
-	}
+func Close() error {
+	return DB.Close()
 }
 
 func Tx(fn func(tx *sqlx.Tx) error) error {
