@@ -25,6 +25,7 @@ func SetUpRoutes() http.Handler {
 		r.Route("/todo", func(r chi.Router) {
 			r.Get("/", handler.GetAllTodos)
 			r.Post("/", handler.CreateTodo)
+			r.Delete("/delete-all", handler.DeleteAllTodos)
 			r.Route("/{id}", func(r chi.Router) {
 				r.Get("/", handler.GetTodoById)
 				r.Put("/", handler.UpdateTodo)

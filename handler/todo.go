@@ -136,3 +136,16 @@ func MarkTodoAsCompleted(w http.ResponseWriter, r *http.Request) {
 
 	utils.RespondJSON(w, http.StatusOK, todo)
 }
+
+func DeleteAllTodos(w http.ResponseWriter, r *http.Request) {
+	userCtx := middleware.UserContext(r)
+
+	if err := dbHelper.DeleteAllTodos(userCtx.UserID); err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to delete all todos")
+		return
+	}
+
+	utils.RespondJSON(w, http.StatusOK, struct {
+		Message string `json:"message"`
+	}{"all todos deleted successfully"})
+}

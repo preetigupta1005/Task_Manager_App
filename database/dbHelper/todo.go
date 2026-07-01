@@ -140,3 +140,11 @@ func MarkTodoAsCompleted(id, userID string) (model.Todo, error) {
 
 	return todo, nil
 }
+func DeleteAllTodos(userID string) error {
+	SQL := `UPDATE todos
+			  SET archived_at = NOW()
+			  WHERE user_id = $1
+			    AND archived_at IS NULL`
+	_, err := database.DB.Exec(SQL, userID)
+	return err
+}
