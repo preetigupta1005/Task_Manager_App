@@ -9,6 +9,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/sirupsen/logrus"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -78,4 +79,24 @@ func Close() {
 	if err != nil {
 		log.Fatal("DB not closed:", err)
 	}
+}
+
+func Tx(fn func(tx *sqlx.Tx) error) error {
+	tx, err := DB.Beginx() // Todo nahi, DB
+	if err != nil {
+		return fmt.Errorf("failed to start a transaction: %+v", err)
+	}
+	defer func() {
+		if err != nil {
+			if rollBackErr := tx.Rollback(); rollBackErr != nil {
+				logrus.Errorf("failed to rollback tx: %s", rollBackErr)
+			}
+			return
+		}
+		if commitErr := tx.Commit(); commitErr != nil {
+			logrus.Errorf("failed to commit tx: %s", commitErr)
+		}
+	}()
+	err = fn(tx)
+	return err
 }

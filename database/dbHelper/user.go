@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func CreateUser(req model.RegisterRequest) error {
@@ -58,12 +60,12 @@ func CreateUserSession(userID string) (string, error) {
 	return sessionID, err
 }
 
-func DeleteUserSession(sessionID string) error {
+func DeleteUserSession(db sqlx.Execer, sessionID string) error {
 	query := `UPDATE user_session
               SET archived_at = NOW()
               WHERE id = $1
                 AND archived_at IS NULL`
-	_, err := database.DB.Exec(query, sessionID)
+	_, err := db.Exec(query, sessionID)
 	return err
 }
 
@@ -75,4 +77,13 @@ func IsSessionValid(sessionID string) (bool, error) {
                 AND archived_at IS NULL`
 	err := database.DB.Get(&isValid, query, sessionID)
 	return isValid, err
+}
+
+func DeleteUser(db sqlx.Execer, userID string) error {
+	query := `UPDATE users
+              SET archived_at = NOW()
+              WHERE id = $1
+                AND archived_at IS NULL`
+	_, err := db.Exec(query, userID)
+	return err
 }
