@@ -1,9 +1,9 @@
-package handler
+package handlers
 
 import (
 	"My-todo-app/database"
 	"My-todo-app/database/dbHelper"
-	"My-todo-app/middleware"
+	"My-todo-app/middlewares"
 	"My-todo-app/model"
 	"My-todo-app/utils"
 	"net/http"
@@ -92,7 +92,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	sessionID := userCtx.SessionID
 	if delErr := dbHelper.DeleteUserSession(database.DB, sessionID); delErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to delete user session")
@@ -105,7 +105,7 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	userID := userCtx.UserID
 	sessionID := userCtx.SessionID
 
