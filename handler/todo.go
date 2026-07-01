@@ -149,3 +149,14 @@ func DeleteAllTodos(w http.ResponseWriter, r *http.Request) {
 		Message string `json:"message"`
 	}{"all todos deleted successfully"})
 }
+
+func GetUser(w http.ResponseWriter, r *http.Request) {
+	userCtx := middleware.UserContext(r)
+	userID := userCtx.UserID
+	user, getErr := dbHelper.GetUser(userID)
+	if getErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, getErr, "failed to get user")
+		return
+	}
+	utils.RespondJSON(w, http.StatusOK, user)
+}

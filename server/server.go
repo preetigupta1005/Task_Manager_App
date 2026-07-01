@@ -17,7 +17,7 @@ func SetUpRoutes() http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Authenticate)
 		r.Route("/user", func(user chi.Router) {
-			//user.Get("/profile", handlers.GetUser)
+			user.Get("/profile", handler.GetUser)
 			user.Post("/logout", handler.LogoutUser)
 			user.Delete("/delete", handler.DeleteUser)
 		})

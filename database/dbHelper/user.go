@@ -87,3 +87,13 @@ func DeleteUser(db sqlx.Execer, userID string) error {
 	_, err := db.Exec(query, userID)
 	return err
 }
+
+func GetUser(userID string) (model.User, error) {
+	var user model.User
+	SQL := `SELECT id, name, email 
+              FROM users 
+              WHERE id = $1
+                AND archived_at IS NULL`
+	getErr := database.DB.Get(&user, SQL, userID)
+	return user, getErr
+}
