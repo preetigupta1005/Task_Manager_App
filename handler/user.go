@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"My-todo-app/database"
 	"My-todo-app/database/dbHelper"
 	"My-todo-app/middleware"
 	"My-todo-app/model"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jmoiron/sqlx"
 )
 
 var v = validator.New()
@@ -91,13 +93,34 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
 	userCtx := middleware.UserContext(r)
-
-	if delErr := dbHelper.DeleteUserSession(userCtx.SessionID); delErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to logout")
+	sessionID := userCtx.SessionID
+	if delErr := dbHelper.DeleteUserSession(database.DB, sessionID); delErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to delete user session")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Message string `json:"message"`
 	}{"logout successful"})
+}
+
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
+	userCtx := middleware.UserContext(r)
+	userID := userCtx.UserID
+	sessionID := userCtx.SessionID
+
+	txErr := database.Tx(func(tx *sqlx.Tx) error {
+		delErr := dbHelper.DeleteUser(tx, userID)
+		if delErr != nil {
+			return delErr
+		}
+		return dbHelper.DeleteUserSession(tx, sessionID)
+	})
+	if txErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to delete user account")
+		return
+	}
+	utils.RespondJSON(w, http.StatusOK, struct {
+		Message string `json:"message"`
+	}{"account deleted successfully"})
 }

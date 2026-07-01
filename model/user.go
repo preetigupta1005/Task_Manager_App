@@ -14,12 +14,12 @@ type User struct {
 type RegisterRequest struct {
 	Name     string `json:"name" validate:"required"`
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6,max=15"`
+	Password string `json:"password" validate:"required,min=4,max=15"`
 }
 
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=6,max=15"`
+	Password string `json:"password" validate:"required,min=4,max=15"`
 }
 
 type LoginData struct {
