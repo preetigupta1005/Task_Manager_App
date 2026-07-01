@@ -1,4 +1,4 @@
-package middleware
+package middlewares
 
 import (
 	"My-todo-app/database/dbHelper"
@@ -57,7 +57,7 @@ func Authenticate(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), UserKey, userCtx)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-	
+
 }
 func UserContext(r *http.Request) model.UserCtx {
 	return r.Context().Value(UserKey).(model.UserCtx)

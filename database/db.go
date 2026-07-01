@@ -72,7 +72,6 @@ func migrateUp(db *sqlx.DB) error {
 	return nil
 }
 
-// close connection
 func Close() error {
 	return DB.Close()
 }

@@ -1,8 +1,8 @@
-package handler
+package handlers
 
 import (
 	"My-todo-app/database/dbHelper"
-	"My-todo-app/middleware"
+	"My-todo-app/middlewares"
 	"My-todo-app/model"
 	"My-todo-app/utils"
 	"database/sql"
@@ -18,7 +18,7 @@ import (
 var validate = validator.New()
 
 func GetAllTodos(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	todos, err := dbHelper.GetAllTodos(userCtx.UserID)
 	if err != nil {
 		log.Println("Error:", err)
@@ -30,12 +30,12 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 
 func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	var req model.TodoRequest
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	req.UserID = userCtx.UserID
 	if err := utils.ParseBody(r, &req); err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse body")
 		return
-	}
+	}5
 	if err := validate.Struct(req); err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "input validation failed")
 		return
@@ -69,7 +69,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 func GetTodoById(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	todo, err := dbHelper.GetTodoById(id, userCtx.UserID)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.RespondError(w, http.StatusNotFound, nil, "todo not found")
@@ -95,7 +95,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	todo, err := dbHelper.UpdateTodo(id, userCtx.UserID, req)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.RespondError(w, http.StatusNotFound, nil, "todo not found")
@@ -111,7 +111,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	found, err := dbHelper.DeleteTodoById(id, userCtx.UserID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to get todos")
@@ -126,7 +126,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 
 func MarkTodoAsCompleted(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	todo, err := dbHelper.MarkTodoAsCompleted(id, userCtx.UserID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to complete todo")
@@ -138,7 +138,7 @@ func MarkTodoAsCompleted(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteAllTodos(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 
 	if err := dbHelper.DeleteAllTodos(userCtx.UserID); err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to delete all todos")
@@ -151,7 +151,7 @@ func DeleteAllTodos(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.UserContext(r)
+	userCtx := middlewares.UserContext(r)
 	userID := userCtx.UserID
 	user, getErr := dbHelper.GetUser(userID)
 	if getErr != nil {

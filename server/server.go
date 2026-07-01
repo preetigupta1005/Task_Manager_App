@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"My-todo-app/handler"
-	"My-todo-app/middleware"
+	"My-todo-app/handlers"
+	"My-todo-app/middlewares"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -24,24 +24,29 @@ const (
 
 func SetUpRoutes() *Server {
 	r := chi.NewRouter()
-	r.Post("/register", handler.RegisterUser)
-	r.Post("/login", handler.LoginUser)
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.Authenticate)
-		r.Route("/user", func(user chi.Router) {
-			user.Get("/profile", handler.GetUser)
-			user.Post("/logout", handler.LogoutUser)
-			user.Delete("/delete", handler.DeleteUser)
-		})
-		r.Route("/todo", func(r chi.Router) {
-			r.Get("/", handler.GetAllTodos)
-			r.Post("/", handler.CreateTodo)
-			r.Delete("/delete-all", handler.DeleteAllTodos)
-			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", handler.GetTodoById)
-				r.Put("/", handler.UpdateTodo)
-				r.Delete("/", handler.DeleteTodo)
-				r.Put("/complete", handler.MarkTodoAsCompleted)
+	r.Route("/v1", func(v1 chi.Router) {
+		r.Post("/register", handlers.RegisterUser)
+		r.Post("/login", handlers.LoginUser)
+
+		r.Group(func(r chi.Router) {
+			r.Use(middlewares.Authenticate)
+
+			r.Route("/user", func(user chi.Router) {
+				user.Get("/profile", handlers.GetUser)
+				user.Post("/logout", handlers.LogoutUser)
+				user.Delete("/delete", handlers.DeleteUser)
+			})
+			r.Route("/todo", func(r chi.Router) {
+				r.Get("/", handlers.GetAllTodos)
+				r.Post("/", handlers.CreateTodo)
+				r.Delete("/delete-all", handlers.DeleteAllTodos)
+
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", handlers.GetTodoById)
+					r.Put("/", handlers.UpdateTodo)
+					r.Delete("/", handlers.DeleteTodo)
+					r.Put("/complete", handlers.MarkTodoAsCompleted)
+				})
 			})
 		})
 	})
