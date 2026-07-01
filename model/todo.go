@@ -13,7 +13,7 @@ type Todo struct {
 }
 
 type TodoRequest struct {
-	Name        string `json:"name"`
+	Name        string `json:"name" validate:"required"`
 	Description string `json:"description"`
 	UserID      string `json:"userId" db:"user_id"`
 }
