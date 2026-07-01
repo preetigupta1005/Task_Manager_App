@@ -6,7 +6,11 @@ import (
 	"My-todo-app/model"
 	"My-todo-app/utils"
 	"net/http"
+
+	"github.com/go-playground/validator/v10"
 )
+
+var v = validator.New()
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var userReq model.RegisterRequest
@@ -15,6 +19,12 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse request body")
 		return
 	}
+
+	if err := v.Struct(userReq); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "input validation failed")
+		return
+	}
+
 	exists, err := dbHelper.IsUSerExist(userReq.Email)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to check user existence")
@@ -39,6 +49,11 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	if parseErr := utils.ParseBody(r, &req); parseErr != nil {
 		utils.RespondError(w, http.StatusBadRequest, parseErr, "failed to parse request body")
+		return
+	}
+
+	if err := v.Struct(req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "input validation failed")
 		return
 	}
 

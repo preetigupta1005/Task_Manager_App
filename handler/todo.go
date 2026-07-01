@@ -12,7 +12,10 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 )
+
+var validate = validator.New()
 
 func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 	userCtx := middleware.UserContext(r)
@@ -33,7 +36,10 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse body")
 		return
 	}
-
+	if err := validate.Struct(req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "input validation failed")
+		return
+	}
 	req.Name = strings.TrimSpace(req.Name)
 
 	if req.Name == "" {
@@ -82,6 +88,10 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	var req model.TodoRequest
 	err := utils.ParseBody(r, &req)
+	if err := validate.Struct(req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err, "input validation failed")
+		return
+	}
 	if err != nil {
 		return
 	}
