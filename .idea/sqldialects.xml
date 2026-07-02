@@ -3,5 +3,6 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/database/dbHelper/todo.go" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/database/dbHelper/user.go" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/migration/00001_initial.up.sql" dialect="GenericSQL" />
   </component>
 </project>

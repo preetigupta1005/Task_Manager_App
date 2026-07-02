@@ -1,4 +1,4 @@
-package model
+package models
 
 type ClientError struct {
 	MessageToUser string `json:"messageToUser"`

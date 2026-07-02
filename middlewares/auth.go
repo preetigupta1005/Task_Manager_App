@@ -1,64 +1,43 @@
 package middlewares
 
 import (
-	"My-todo-app/database/dbHelper"
-	"My-todo-app/model"
-	"My-todo-app/utils"
+	"My-todo-app/models"
 	"context"
 	"net/http"
-	"os"
-	"strings"
 
-	"github.com/golang-jwt/jwt/v5"
+	"My-todo-app/database/dbHelper"
+
+	"github.com/sirupsen/logrus"
 )
 
-type contextKey string
+type ContextKeys string
 
-const UserKey contextKey = "userId"
+const userContext ContextKeys = "userContext"
 
 func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		tokenString := r.Header.Get("Authorization")
-		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-		if tokenString == "" {
-			utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		sessionID := r.Header.Get("x-api-key")
+		if sessionID == "" {
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET_KEY")), nil
-		})
-		if err != nil || !token.Valid {
-			utils.RespondError(w, http.StatusUnauthorized, err, "unauthorized")
+		user, err := dbHelper.GetUserBySession(sessionID)
+		if err != nil || user == nil {
+			logrus.WithError(err).Errorf("failed to get user with session: %s", sessionID)
+			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		userID := claims["userId"].(string)
-		sessionID := claims["sessionId"].(string)
-
-		isValid, err := dbHelper.IsSessionValid(sessionID)
-
-		if err != nil {
-			utils.RespondError(w, http.StatusInternalServerError, err, "failed to validate session")
-			return
-		}
-
-		if !isValid {
-			utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
-			return
-		}
-
-		userCtx := model.UserCtx{
-			UserID:    userID,
-			SessionID: sessionID,
-		}
-		ctx := context.WithValue(r.Context(), UserKey, userCtx)
+		ctx := context.WithValue(r.Context(), userContext, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-
 }
-func UserContext(r *http.Request) model.UserCtx {
-	return r.Context().Value(UserKey).(model.UserCtx)
+
+func UserContext(r *http.Request) *models.User {
+	user, ok := r.Context().Value(userContext).(*models.User)
+	if !ok {
+		return nil
+	}
+	return user
 }

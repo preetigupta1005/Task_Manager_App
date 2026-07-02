@@ -23,7 +23,6 @@ func main() {
 	if err := database.ConnectDB(); err != nil {
 		logrus.Panicf("failed to connect database: %+v", err)
 	}
-	logrus.Print("connected to database successfully")
 
 	srv := server.SetUpRoutes()
 
@@ -32,7 +31,7 @@ func main() {
 			logrus.Panicf("failed to run server: %+v", err)
 		}
 	}()
-	logrus.Print("server started at :8080")
+	logrus.Print("server started at port:8080")
 
 	<-done
 	logrus.Info("shutting down server")

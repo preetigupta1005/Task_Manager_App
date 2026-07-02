@@ -2,7 +2,7 @@ package dbHelper
 
 import (
 	"My-todo-app/database"
-	"My-todo-app/model"
+	"My-todo-app/models"
 	"My-todo-app/utils"
 	"database/sql"
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func CreateUser(req model.RegisterRequest) error {
+func CreateUser(req models.RegisterRequest) error {
 	hashedPassword, err := utils.HashedPassword(req.Password)
 	if err != nil {
 		return err
@@ -36,18 +36,18 @@ func IsUSerExist(email string) (bool, error) {
 	return check, err
 }
 
-func GetUserByEmail(email string) (model.User, error) {
-	var user model.User
+func GetUserByEmail(email string) (models.User, error) {
+	var user models.User
 	query := `SELECT *
               FROM users 
               WHERE email=TRIM(LOWER($1)) 
               AND archived_at IS NULL`
 	err := database.DB.Get(&user, query, email)
 	if errors.Is(err, sql.ErrNoRows) {
-		return model.User{}, nil
+		return models.User{}, nil
 	}
 	if err != nil {
-		return model.User{}, err
+		return models.User{}, err
 	}
 	return user, nil
 }
@@ -69,16 +69,6 @@ func DeleteUserSession(db sqlx.Execer, sessionID string) error {
 	return err
 }
 
-func IsSessionValid(sessionID string) (bool, error) {
-	var isValid bool
-	query := `SELECT count(id) > 0 
-              FROM user_session 
-              WHERE id = $1 
-                AND archived_at IS NULL`
-	err := database.DB.Get(&isValid, query, sessionID)
-	return isValid, err
-}
-
 func DeleteUser(db sqlx.Execer, userID string) error {
 	query := `UPDATE users
               SET archived_at = NOW()
@@ -88,12 +78,30 @@ func DeleteUser(db sqlx.Execer, userID string) error {
 	return err
 }
 
-func GetUser(userID string) (model.User, error) {
-	var user model.User
+func GetUser(userID string) (models.User, error) {
+	var user models.User
 	SQL := `SELECT id, name, email 
               FROM users 
               WHERE id = $1
                 AND archived_at IS NULL`
 	getErr := database.DB.Get(&user, SQL, userID)
 	return user, getErr
+}
+
+func GetUserBySession(sessionID string) (*models.User, error) {
+	var user models.User
+	SQL := `SELECT u.id, u.name, u.email
+			  FROM users u
+			  JOIN user_session s ON s.user_id = u.id
+			  WHERE s.id = $1
+			    AND s.archived_at IS NULL
+			    AND u.archived_at IS NULL`
+	err := database.DB.Get(&user, SQL, sessionID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
 }

@@ -37,6 +37,7 @@ func SetUpRoutes() *Server {
 				user.Delete("/delete", handlers.DeleteUser)
 			})
 			r.Route("/todo", func(r chi.Router) {
+
 				r.Get("/", handlers.GetAllTodos)
 				r.Post("/", handlers.CreateTodo)
 				r.Delete("/delete-all", handlers.DeleteAllTodos)

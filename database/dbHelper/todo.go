@@ -2,7 +2,7 @@ package dbHelper
 
 import (
 	"My-todo-app/database"
-	"My-todo-app/model"
+	"My-todo-app/models"
 	"database/sql"
 	"errors"
 	"strings"
@@ -21,8 +21,8 @@ func TodoExists(name, userID string) (bool, error) {
 
 	return exists, err
 }
-func GetAllTodos(userID string) ([]model.Todo, error) {
-	todos := make([]model.Todo, 0)
+func GetAllTodos(userID string) ([]models.Todo, error) {
+	todos := make([]models.Todo, 0)
 	query := `SELECT id,name,description,is_completed,created_at, archived_at 
             FROM  todos 
             WHERE user_id=$1 
@@ -35,7 +35,7 @@ func GetAllTodos(userID string) ([]model.Todo, error) {
 	return todos, nil
 }
 
-func CreateTodo(req model.TodoRequest) (model.Todo, error) {
+func CreateTodo(req models.TodoRequest) (models.Todo, error) {
 
 	req.Name = strings.TrimSpace(req.Name)
 	req.Description = strings.TrimSpace(req.Description)
@@ -44,7 +44,7 @@ func CreateTodo(req model.TodoRequest) (model.Todo, error) {
 		req.Description,
 		req.UserID,
 	}
-	var todo model.Todo
+	var todo models.Todo
 	query := `
 		INSERT INTO todos (name, description,user_id)
 		VALUES ($1, $2,$3)
@@ -52,16 +52,16 @@ func CreateTodo(req model.TodoRequest) (model.Todo, error) {
 
 	err := database.DB.QueryRowx(query, args...).StructScan(&todo)
 	if errors.Is(err, sql.ErrNoRows) {
-		return model.Todo{}, nil
+		return models.Todo{}, nil
 	}
 	if err != nil {
-		return model.Todo{}, err
+		return models.Todo{}, err
 	}
 	return todo, nil
 }
 
-func GetTodoById(id, userID string) (model.Todo, error) {
-	var todo model.Todo
+func GetTodoById(id, userID string) (models.Todo, error) {
+	var todo models.Todo
 	query := `Select *
             from todos 
             where id=$1
@@ -71,14 +71,14 @@ func GetTodoById(id, userID string) (model.Todo, error) {
 	err := database.DB.QueryRowx(query, id, userID).StructScan(&todo)
 
 	if err != nil {
-		return model.Todo{}, err
+		return models.Todo{}, err
 	}
 	return todo, nil
 }
-func UpdateTodo(id, userID string, req model.TodoRequest) (model.Todo, error) {
+func UpdateTodo(id, userID string, req models.TodoRequest) (models.Todo, error) {
 	req.Name = strings.TrimSpace(req.Name)
 	req.Description = strings.TrimSpace(req.Description)
-	var todo model.Todo
+	var todo models.Todo
 	args := []interface{}{
 		id,
 		userID,
@@ -98,7 +98,7 @@ func UpdateTodo(id, userID string, req model.TodoRequest) (model.Todo, error) {
 	err := database.DB.QueryRowx(query, args...).StructScan(&todo)
 
 	if err != nil {
-		return model.Todo{}, err
+		return models.Todo{}, err
 	}
 	return todo, nil
 }
@@ -119,8 +119,8 @@ func DeleteTodoById(id, userID string) (bool, error) {
 	return true, nil
 }
 
-func MarkTodoAsCompleted(id, userID string) (model.Todo, error) {
-	var todo model.Todo
+func MarkTodoAsCompleted(id, userID string) (models.Todo, error) {
+	var todo models.Todo
 
 	query := `
 		UPDATE todos
@@ -134,7 +134,7 @@ func MarkTodoAsCompleted(id, userID string) (model.Todo, error) {
 	err := database.DB.QueryRowx(query, id, userID).StructScan(&todo)
 
 	if err != nil {
-		return model.Todo{}, err
+		return models.Todo{}, err
 
 	}
 

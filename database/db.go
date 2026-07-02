@@ -42,11 +42,12 @@ func ConnectDB() error {
 	}
 
 	DB = db
+	logrus.Print("Connected to DB successfully")
 	err = migrateUp(DB)
 	if err != nil {
 		return err
 	}
-	logrus.Print("Connected to DB successfully")
+	logrus.Print("migration completed successfully")
 	return nil
 }
 

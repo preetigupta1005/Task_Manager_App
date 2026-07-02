@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"My-todo-app/model"
+	"My-todo-app/models"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -29,12 +29,12 @@ func RespondJSON(w http.ResponseWriter, statusCode int, body interface{}) {
 	}
 }
 
-func newClientError(err error, statusCode int, messageToUser string) *model.ClientError {
+func newClientError(err error, statusCode int, messageToUser string) *models.ClientError {
 	errMsg := ""
 	if err != nil {
 		errMsg = err.Error()
 	}
-	return &model.ClientError{
+	return &models.ClientError{
 		MessageToUser: messageToUser,
 		Err:           errMsg,
 		StatusCode:    statusCode,

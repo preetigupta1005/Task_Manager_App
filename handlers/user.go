@@ -4,7 +4,7 @@ import (
 	"My-todo-app/database"
 	"My-todo-app/database/dbHelper"
 	"My-todo-app/middlewares"
-	"My-todo-app/model"
+	"My-todo-app/models"
 	"My-todo-app/utils"
 	"net/http"
 
@@ -15,7 +15,7 @@ import (
 var v = validator.New()
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var userReq model.RegisterRequest
+	var userReq models.RegisterRequest
 	err := utils.ParseBody(r, &userReq)
 	if err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse request body")
@@ -47,7 +47,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginUser(w http.ResponseWriter, r *http.Request) {
-	var req model.LoginRequest
+	var req models.LoginRequest
 
 	if parseErr := utils.ParseBody(r, &req); parseErr != nil {
 		utils.RespondError(w, http.StatusBadRequest, parseErr, "failed to parse request body")
@@ -80,22 +80,16 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create session")
 		return
 	}
-	token, tokenErr := utils.GenerateJWT(user.ID, sessionID)
-	if tokenErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, tokenErr, "failed to generate token")
-		return
-	}
 
 	utils.RespondJSON(w, http.StatusOK, struct {
-		Token string `json:"token"`
-	}{token})
+		SessionID string `json:"session_id"`
+	}{sessionID})
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	userCtx := middlewares.UserContext(r)
-	sessionID := userCtx.SessionID
+	sessionID := r.Header.Get("x-api-key")
 	if delErr := dbHelper.DeleteUserSession(database.DB, sessionID); delErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to delete user session")
+		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to logout")
 		return
 	}
 
@@ -105,9 +99,13 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	userCtx := middlewares.UserContext(r)
-	userID := userCtx.UserID
-	sessionID := userCtx.SessionID
+	user := middlewares.UserContext(r)
+	if user == nil {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		return
+	}
+	userID := user.ID
+	sessionID := r.Header.Get("x-api-key")
 
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
 		delErr := dbHelper.DeleteUser(tx, userID)
@@ -123,4 +121,9 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Message string `json:"message"`
 	}{"account deleted successfully"})
+}
+
+func GetUser(w http.ResponseWriter, r *http.Request) {
+	user := middlewares.UserContext(r)
+	utils.RespondJSON(w, http.StatusOK, user)
 }
