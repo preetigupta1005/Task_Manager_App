@@ -36,14 +36,32 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusConflict, nil, "user already exists")
 		return
 	}
-	saveErr := dbHelper.CreateUser(userReq)
-	if saveErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, saveErr, "failed to create user")
+
+	hashedPassword, err := utils.HashedPassword(userReq.Password)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to secure password")
 		return
 	}
+
+	var sessionID string
+	txErr := database.Tx(func(tx *sqlx.Tx) error {
+		userID, saveErr := dbHelper.CreateUser(tx, userReq.Name, userReq.Email, hashedPassword)
+		if saveErr != nil {
+			return saveErr
+		}
+
+		var sessErr error
+		sessionID, sessErr = dbHelper.CreateUserSession(tx, userID)
+		return sessErr
+	})
+	if txErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to register user")
+		return
+	}
+
 	utils.RespondJSON(w, http.StatusCreated, struct {
-		Message string `json:"message"`
-	}{"user registered successfully"})
+		SessionID string `json:"session_id"`
+	}{sessionID})
 }
 
 func LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +93,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID, sessionErr := dbHelper.CreateUserSession(user.ID)
+	sessionID, sessionErr := dbHelper.CreateUserSession(database.DB, user.ID)
 	if sessionErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create session")
 		return

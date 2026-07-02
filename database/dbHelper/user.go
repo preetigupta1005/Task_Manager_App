@@ -3,7 +3,6 @@ package dbHelper
 import (
 	"My-todo-app/database"
 	"My-todo-app/models"
-	"My-todo-app/utils"
 	"database/sql"
 	"errors"
 	"strings"
@@ -11,20 +10,17 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func CreateUser(req models.RegisterRequest) error {
-	hashedPassword, err := utils.HashedPassword(req.Password)
-	if err != nil {
-		return err
-	}
-	args := []interface{}{
-		strings.TrimSpace(req.Name),
-		strings.TrimSpace(strings.ToLower(req.Email)),
-		hashedPassword,
-	}
-	query := `INSERT INTO users (name,email,password)
-            VALUES ($1,$2,$3)  `
-	_, insertErr := database.DB.Exec(query, args...)
-	return insertErr
+type Querier interface {
+	QueryRow(query string, args ...interface{}) *sql.Row
+}
+
+func CreateUser(tx *sqlx.Tx, name, email, hashedPassword string) (string, error) {
+	var userID string
+	query := `INSERT INTO users (name, email, password)
+              VALUES ($1, $2, $3)
+              RETURNING id`
+	err := tx.QueryRow(query, strings.TrimSpace(name), strings.TrimSpace(strings.ToLower(email)), hashedPassword).Scan(&userID)
+	return userID, err
 }
 
 func IsUSerExist(email string) (bool, error) {
@@ -52,11 +48,12 @@ func GetUserByEmail(email string) (models.User, error) {
 	return user, nil
 }
 
-func CreateUserSession(userID string) (string, error) {
+func CreateUserSession(db Querier, userID string) (string, error) {
 	var sessionID string
-	query := `INSERT INTO user_session(user_id) 
-              VALUES ($1) RETURNING id`
-	err := database.DB.Get(&sessionID, query, userID)
+	query := `INSERT INTO user_session (user_id)
+              VALUES ($1)
+              RETURNING id`
+	err := db.QueryRow(query, userID).Scan(&sessionID)
 	return sessionID, err
 }
 
@@ -76,16 +73,6 @@ func DeleteUser(db sqlx.Execer, userID string) error {
                 AND archived_at IS NULL`
 	_, err := db.Exec(query, userID)
 	return err
-}
-
-func GetUser(userID string) (models.User, error) {
-	var user models.User
-	SQL := `SELECT id, name, email 
-              FROM users 
-              WHERE id = $1
-                AND archived_at IS NULL`
-	getErr := database.DB.Get(&user, SQL, userID)
-	return user, getErr
 }
 
 func GetUserBySession(sessionID string) (*models.User, error) {
