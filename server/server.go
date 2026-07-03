@@ -25,10 +25,10 @@ const (
 func SetUpRoutes() *Server {
 	r := chi.NewRouter()
 	r.Route("/v1", func(v1 chi.Router) {
-		r.Post("/register", handlers.RegisterUser)
-		r.Post("/login", handlers.LoginUser)
+		v1.Post("/register", handlers.RegisterUser)
+		v1.Post("/login", handlers.LoginUser)
 
-		r.Group(func(r chi.Router) {
+		v1.Group(func(r chi.Router) {
 			r.Use(middlewares.Authenticate)
 
 			r.Route("/user", func(user chi.Router) {
