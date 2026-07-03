@@ -7,6 +7,7 @@ import (
 	"My-todo-app/models"
 	"My-todo-app/utils"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
@@ -43,16 +44,14 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var sessionID string
+	sessionToken := utils.HashString(userReq.Email + time.Now().String())
+
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
 		userID, saveErr := dbHelper.CreateUser(tx, userReq.Name, userReq.Email, hashedPassword)
 		if saveErr != nil {
 			return saveErr
 		}
-
-		var sessErr error
-		sessionID, sessErr = dbHelper.CreateUserSession(tx, userID)
-		return sessErr
+		return dbHelper.CreateUserSession(tx, userID, sessionToken)
 	})
 	if txErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to register user")
@@ -60,8 +59,8 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, struct {
-		SessionID string `json:"session_id"`
-	}{sessionID})
+		SessionToken string `json:"session_token"`
+	}{sessionToken})
 }
 
 func LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -92,16 +91,16 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, passErr, "invalid password")
 		return
 	}
-
-	sessionID, sessionErr := dbHelper.CreateUserSession(database.DB, user.ID)
+	sessionToken := utils.HashString(req.Email + time.Now().String())
+	sessionErr := dbHelper.CreateUserSession(database.DB, user.ID, sessionToken)
 	if sessionErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create session")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusOK, struct {
-		SessionID string `json:"session_id"`
-	}{sessionID})
+		SessionToken string `json:"session_token"`
+	}{sessionToken})
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {

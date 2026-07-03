@@ -78,7 +78,7 @@ func Close() error {
 }
 
 func Tx(fn func(tx *sqlx.Tx) error) error {
-	tx, err := DB.Beginx() // Todo nahi, DB
+	tx, err := DB.Beginx()
 	if err != nil {
 		return fmt.Errorf("failed to start a transaction: %+v", err)
 	}

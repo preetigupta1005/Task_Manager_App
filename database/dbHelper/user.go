@@ -48,21 +48,18 @@ func GetUserByEmail(email string) (models.User, error) {
 	return user, nil
 }
 
-func CreateUserSession(db Querier, userID string) (string, error) {
-	var sessionID string
-	query := `INSERT INTO user_session (user_id)
-              VALUES ($1)
-              RETURNING id`
-	err := db.QueryRow(query, userID).Scan(&sessionID)
-	return sessionID, err
+func CreateUserSession(db sqlx.Execer, userID, sessionToken string) error {
+	SQL := `INSERT INTO user_session (user_id, session_token) VALUES ($1, $2)`
+	_, err := db.Exec(SQL, userID, sessionToken)
+	return err
 }
 
-func DeleteUserSession(db sqlx.Execer, sessionID string) error {
+func DeleteUserSession(db sqlx.Execer, sessionToken string) error {
 	query := `UPDATE user_session
               SET archived_at = NOW()
-              WHERE id = $1
+              WHERE session_token  = $1
                 AND archived_at IS NULL`
-	_, err := db.Exec(query, sessionID)
+	_, err := db.Exec(query, sessionToken)
 	return err
 }
 
@@ -75,15 +72,15 @@ func DeleteUser(db sqlx.Execer, userID string) error {
 	return err
 }
 
-func GetUserBySession(sessionID string) (*models.User, error) {
+func GetUserBySession(sessionToken string) (*models.User, error) {
 	var user models.User
 	SQL := `SELECT u.id, u.name, u.email
 			  FROM users u
 			  JOIN user_session s ON s.user_id = u.id
-			  WHERE s.id = $1
+			  WHERE s.session_token= $1
 			    AND s.archived_at IS NULL
 			    AND u.archived_at IS NULL`
-	err := database.DB.Get(&user, SQL, sessionID)
+	err := database.DB.Get(&user, SQL, sessionToken)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
