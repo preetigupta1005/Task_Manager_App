@@ -7,10 +7,10 @@ import (
 	"My-todo-app/models"
 	"My-todo-app/utils"
 	"net/http"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
+	"github.com/sirupsen/logrus"
 )
 
 var v = validator.New()
@@ -44,23 +44,21 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionToken := utils.HashString(userReq.Email + time.Now().String())
+	userID, saveErr := dbHelper.CreateUser(userReq.Name, userReq.Email, hashedPassword)
+	if saveErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, saveErr, "failed to create user")
+		return
+	}
 
-	txErr := database.Tx(func(tx *sqlx.Tx) error {
-		userID, saveErr := dbHelper.CreateUser(tx, userReq.Name, userReq.Email, hashedPassword)
-		if saveErr != nil {
-			return saveErr
-		}
-		return dbHelper.CreateUserSession(tx, userID, sessionToken)
-	})
-	if txErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to register user")
+	token, tokenErr := utils.GenerateJWT(userID)
+	if tokenErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, tokenErr, "failed to generate token")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusCreated, struct {
-		SessionToken string `json:"session_token"`
-	}{sessionToken})
+		Token string `json:"token"`
+	}{token})
 }
 
 func LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -91,56 +89,64 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, passErr, "invalid password")
 		return
 	}
-	sessionToken := utils.HashString(req.Email + time.Now().String())
-	sessionErr := dbHelper.CreateUserSession(database.DB, user.ID, sessionToken)
-	if sessionErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create session")
+
+	token, tokenErr := utils.GenerateJWT(user.ID)
+	if tokenErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, tokenErr, "failed to generate token")
 		return
 	}
 
 	utils.RespondJSON(w, http.StatusOK, struct {
-		SessionToken string `json:"session_token"`
-	}{sessionToken})
+		Token string `json:"token"`
+	}{token})
 }
 
 func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	sessionID := r.Header.Get("x-api-key")
-	if delErr := dbHelper.DeleteUserSession(database.DB, sessionID); delErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, delErr, "failed to logout")
+	userCtx := middlewares.UserContext(r)
+	if userCtx == nil {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-
+	logrus.Info("user %s logged out", userCtx.UserID)
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Message string `json:"message"`
 	}{"logout successful"})
 }
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	user := middlewares.UserContext(r)
-	if user == nil {
+	userCtx := middlewares.UserContext(r)
+	if userCtx == nil {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	userID := user.ID
-	sessionID := r.Header.Get("x-api-key")
+	userID := userCtx.UserID
 
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
-		delErr := dbHelper.DeleteUser(tx, userID)
-		if delErr != nil {
-			return delErr
+		if err := dbHelper.DeleteAllTodos(tx, userID); err != nil {
+			return err
 		}
-		return dbHelper.DeleteUserSession(tx, sessionID)
+		return dbHelper.DeleteUser(tx, userID)
 	})
 	if txErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to delete user account")
 		return
 	}
+
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Message string `json:"message"`
 	}{"account deleted successfully"})
 }
 
 func GetUser(w http.ResponseWriter, r *http.Request) {
-	user := middlewares.UserContext(r)
+	userCtx := middlewares.UserContext(r)
+	if userCtx == nil {
+		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
+		return
+	}
+	user, err := dbHelper.GetUser(userCtx.UserID)
+	if err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to get user")
+		return
+	}
 	utils.RespondJSON(w, http.StatusOK, user)
 }

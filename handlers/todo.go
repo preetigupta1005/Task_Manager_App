@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"My-todo-app/database"
 	"My-todo-app/database/dbHelper"
 	"My-todo-app/middlewares"
 	"My-todo-app/models"
@@ -23,7 +24,7 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	todos, err := dbHelper.GetAllTodos(userCtx.ID)
+	todos, err := dbHelper.GetAllTodos(userCtx.UserID)
 	if err != nil {
 		log.Println("Error:", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -39,7 +40,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	req.UserID = userCtx.ID
+	req.UserID = userCtx.UserID
 	if err := utils.ParseBody(r, &req); err != nil {
 		utils.RespondError(w, http.StatusBadRequest, err, "failed to parse body")
 		return
@@ -82,7 +83,7 @@ func GetTodoById(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	todo, err := dbHelper.GetTodoById(id, userCtx.ID)
+	todo, err := dbHelper.GetTodoById(id, userCtx.UserID)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.RespondError(w, http.StatusNotFound, nil, "todo not found")
 		return
@@ -112,7 +113,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	todo, err := dbHelper.UpdateTodo(id, userCtx.ID, req)
+	todo, err := dbHelper.UpdateTodo(id, userCtx.UserID, req)
 	if errors.Is(err, sql.ErrNoRows) {
 		utils.RespondError(w, http.StatusNotFound, nil, "todo not found")
 		return
@@ -132,7 +133,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	found, err := dbHelper.DeleteTodoById(id, userCtx.ID)
+	found, err := dbHelper.DeleteTodoById(id, userCtx.UserID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to get todos")
 		return
@@ -151,7 +152,7 @@ func MarkTodoAsCompleted(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	todo, err := dbHelper.MarkTodoAsCompleted(id, userCtx.ID)
+	todo, err := dbHelper.MarkTodoAsCompleted(id, userCtx.UserID)
 	if err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to complete todo")
 
@@ -167,7 +168,7 @@ func DeleteAllTodos(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	if err := dbHelper.DeleteAllTodos(userCtx.ID); err != nil {
+	if err := dbHelper.DeleteAllTodos(database.DB, userCtx.UserID); err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to delete all todos")
 		return
 	}

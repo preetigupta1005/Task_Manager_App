@@ -1,5 +1,4 @@
 BEGIN;
-
 CREATE TABLE IF NOT EXISTS users
 (
     id          UUID PRIMARY KEY  DEFAULT gen_random_uuid(),
@@ -10,7 +9,6 @@ CREATE TABLE IF NOT EXISTS users
     archived_at TIMESTAMP WITH TIME ZONE
                               );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_user ON users (email) WHERE archived_at IS NULL;
-
 CREATE TABLE IF NOT EXISTS todos
 (
     id           UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
@@ -22,14 +20,4 @@ CREATE TABLE IF NOT EXISTS todos
     archived_at  TIMESTAMP WITH TIME ZONE
                                );
 CREATE UNIQUE INDEX IF NOT EXISTS unique_todo ON todos (user_id, name) WHERE archived_at IS NULL;
-
-CREATE TABLE IF NOT EXISTS user_session
-(
-    id          UUID PRIMARY KEY         DEFAULT gen_random_uuid(),
-    user_id     UUID REFERENCES users (id) NOT NULL,
-    session_token TEXT NOT NULL,
-    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    archived_at TIMESTAMP WITH TIME ZONE
-);
-
 COMMIT;

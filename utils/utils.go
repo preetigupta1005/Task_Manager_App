@@ -2,12 +2,14 @@ package utils
 
 import (
 	"My-todo-app/models"
-	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -49,11 +51,11 @@ func RespondError(w http.ResponseWriter, statusCode int, err error, messageToUse
 	}
 }
 
-func HashString(toHash string) string {
-	sha := sha512.New()
-	sha.Write([]byte(toHash))
-	return hex.EncodeToString(sha.Sum(nil))
-}
+//func HashString(toHash string) string {
+//	sha := sha512.New()
+//	sha.Write([]byte(toHash))
+//	return hex.EncodeToString(sha.Sum(nil))
+//}
 
 func HashedPassword(password string) (string, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -62,4 +64,27 @@ func HashedPassword(password string) (string, error) {
 
 func CheckPassword(password, hashedPassword string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+}
+
+func GenerateJWT(userID string) (string, error) {
+	claims := jwt.MapClaims{
+		"userID": userID,
+		"exp":    time.Now().Add(24 * time.Hour).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
+}
+
+func ParseJWT(tokenString string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	return claims, nil
 }

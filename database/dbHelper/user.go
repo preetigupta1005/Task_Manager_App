@@ -10,16 +10,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Querier interface {
-	QueryRow(query string, args ...interface{}) *sql.Row
-}
-
-func CreateUser(tx *sqlx.Tx, name, email, hashedPassword string) (string, error) {
+func CreateUser(name, email, hashedPassword string) (string, error) {
 	var userID string
 	query := `INSERT INTO users (name, email, password)
               VALUES ($1, $2, $3)
               RETURNING id`
-	err := tx.QueryRow(query, strings.TrimSpace(name), strings.TrimSpace(strings.ToLower(email)), hashedPassword).Scan(&userID)
+	err := database.DB.QueryRow(query, strings.TrimSpace(name), strings.TrimSpace(strings.ToLower(email)), hashedPassword).Scan(&userID)
 	return userID, err
 }
 
@@ -63,29 +59,23 @@ func DeleteUserSession(db sqlx.Execer, sessionToken string) error {
 	return err
 }
 
-func DeleteUser(db sqlx.Execer, userID string) error {
+func DeleteUser(tx *sqlx.Tx, userID string) error {
 	query := `UPDATE users
               SET archived_at = NOW()
               WHERE id = $1
                 AND archived_at IS NULL`
-	_, err := db.Exec(query, userID)
+	_, err := tx.Exec(query, userID)
 	return err
 }
 
-func GetUserBySession(sessionToken string) (*models.User, error) {
+func GetUser(userID string) (models.User, error) {
 	var user models.User
-	SQL := `SELECT u.id, u.name, u.email
-			  FROM users u
-			  JOIN user_session s ON s.user_id = u.id
-			  WHERE s.session_token= $1
-			    AND s.archived_at IS NULL
-			    AND u.archived_at IS NULL`
-	err := database.DB.Get(&user, SQL, sessionToken)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &user, nil
+	query := `Select id,name,email,created_at
+            from users 
+            where id=$1
+            AND archived_at is null`
+
+	err := database.DB.Get(&user, query, userID)
+	return user, err
+
 }

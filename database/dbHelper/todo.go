@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func TodoExists(name, userID string) (bool, error) {
@@ -140,11 +142,11 @@ func MarkTodoAsCompleted(id, userID string) (models.Todo, error) {
 
 	return todo, nil
 }
-func DeleteAllTodos(userID string) error {
+func DeleteAllTodos(db sqlx.Execer, userID string) error {
 	SQL := `UPDATE todos
 			  SET archived_at = NOW()
 			  WHERE user_id = $1
 			    AND archived_at IS NULL`
-	_, err := database.DB.Exec(SQL, userID)
+	_, err := db.Exec(SQL, userID)
 	return err
 }
