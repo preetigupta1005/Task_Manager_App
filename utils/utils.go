@@ -51,12 +51,6 @@ func RespondError(w http.ResponseWriter, statusCode int, err error, messageToUse
 	}
 }
 
-//func HashString(toHash string) string {
-//	sha := sha512.New()
-//	sha.Write([]byte(toHash))
-//	return hex.EncodeToString(sha.Sum(nil))
-//}
-
 func HashedPassword(password string) (string, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hashPassword), err
@@ -66,10 +60,11 @@ func CheckPassword(password, hashedPassword string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-func GenerateJWT(userID string) (string, error) {
+func GenerateJWT(userID string, sessionID string) (string, error) {
 	claims := jwt.MapClaims{
-		"userID": userID,
-		"exp":    time.Now().Add(24 * time.Hour).Unix(),
+		"userID":    userID,
+		"sessionID": sessionID,
+		"exp":       time.Now().Add(24 * time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))

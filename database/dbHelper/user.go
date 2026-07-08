@@ -10,12 +10,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func CreateUser(name, email, hashedPassword string) (string, error) {
+func CreateUser(tx sqlx.Ext, name, email, hashedPassword string) (string, error) {
 	var userID string
 	query := `INSERT INTO users (name, email, password)
               VALUES ($1, $2, $3)
               RETURNING id`
-	err := database.DB.QueryRow(query, strings.TrimSpace(name), strings.TrimSpace(strings.ToLower(email)), hashedPassword).Scan(&userID)
+	err := tx.QueryRowx(query, strings.TrimSpace(name), strings.TrimSpace(strings.ToLower(email)), hashedPassword).Scan(&userID)
 	return userID, err
 }
 
@@ -43,22 +43,6 @@ func GetUserByEmail(email string) (models.User, error) {
 	}
 	return user, nil
 }
-
-func CreateUserSession(db sqlx.Execer, userID, sessionToken string) error {
-	SQL := `INSERT INTO user_session (user_id, session_token) VALUES ($1, $2)`
-	_, err := db.Exec(SQL, userID, sessionToken)
-	return err
-}
-
-func DeleteUserSession(db sqlx.Execer, sessionToken string) error {
-	query := `UPDATE user_session
-              SET archived_at = NOW()
-              WHERE session_token  = $1
-                AND archived_at IS NULL`
-	_, err := db.Exec(query, sessionToken)
-	return err
-}
-
 func DeleteUser(tx *sqlx.Tx, userID string) error {
 	query := `UPDATE users
               SET archived_at = NOW()
@@ -78,4 +62,24 @@ func GetUser(userID string) (models.User, error) {
 	err := database.DB.Get(&user, query, userID)
 	return user, err
 
+}
+
+func IsSessionValid(sessionID string) (bool, error) {
+	var isValid bool
+	query := `SELECT count(id) > 0 FROM user_session WHERE id = $1 AND archived_at IS NULL`
+	err := database.DB.Get(&isValid, query, sessionID)
+	return isValid, err
+}
+
+func CreateUserSession(tx sqlx.Ext, userID string) (string, error) {
+	var sessionID string
+	query := `INSERT INTO user_session (user_id) VALUES ($1) RETURNING id`
+	err := tx.QueryRowx(query, userID).Scan(&sessionID)
+	return sessionID, err
+}
+
+func DeleteUserSession(db sqlx.Execer, sessionID string) error {
+	query := `UPDATE user_session SET archived_at = NOW() WHERE id = $1 AND archived_at IS NULL`
+	_, err := db.Exec(query, sessionID)
+	return err
 }

@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
-	"github.com/sirupsen/logrus"
 )
 
 var v = validator.New()
@@ -43,19 +42,25 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusInternalServerError, err, "failed to secure password")
 		return
 	}
+	var token string
+	txErr := database.Tx(func(tx *sqlx.Tx) error {
+		userID, saveErr := dbHelper.CreateUser(tx, userReq.Name, userReq.Email, hashedPassword)
+		if saveErr != nil {
+			return saveErr
+		}
 
-	userID, saveErr := dbHelper.CreateUser(userReq.Name, userReq.Email, hashedPassword)
-	if saveErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, saveErr, "failed to create user")
+		sessionID, sessErr := dbHelper.CreateUserSession(tx, userID)
+		if sessErr != nil {
+			return sessErr
+		}
+		var tokenErr error
+		token, tokenErr = utils.GenerateJWT(userID, sessionID)
+		return tokenErr
+	})
+	if txErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to register user")
 		return
 	}
-
-	token, tokenErr := utils.GenerateJWT(userID)
-	if tokenErr != nil {
-		utils.RespondError(w, http.StatusInternalServerError, tokenErr, "failed to generate token")
-		return
-	}
-
 	utils.RespondJSON(w, http.StatusCreated, struct {
 		Token string `json:"token"`
 	}{token})
@@ -90,12 +95,17 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, tokenErr := utils.GenerateJWT(user.ID)
+	sessionID, sessionErr := dbHelper.CreateUserSession(database.DB, user.ID)
+	if sessionErr != nil {
+		utils.RespondError(w, http.StatusInternalServerError, sessionErr, "failed to create session")
+		return
+	}
+
+	token, tokenErr := utils.GenerateJWT(user.ID, sessionID)
 	if tokenErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, tokenErr, "failed to generate token")
 		return
 	}
-
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Token string `json:"token"`
 	}{token})
@@ -107,7 +117,10 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 		utils.RespondError(w, http.StatusUnauthorized, nil, "unauthorized")
 		return
 	}
-	logrus.Info("user %s logged out", userCtx.UserID)
+	if err := dbHelper.DeleteUserSession(database.DB, userCtx.SessionID); err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err, "failed to logout")
+		return
+	}
 	utils.RespondJSON(w, http.StatusOK, struct {
 		Message string `json:"message"`
 	}{"logout successful"})
@@ -120,12 +133,16 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	userID := userCtx.UserID
+	sessionID := userCtx.SessionID
 
 	txErr := database.Tx(func(tx *sqlx.Tx) error {
 		if err := dbHelper.DeleteAllTodos(tx, userID); err != nil {
 			return err
 		}
-		return dbHelper.DeleteUser(tx, userID)
+		if err := dbHelper.DeleteUser(tx, userID); err != nil {
+			return err
+		}
+		return dbHelper.DeleteUserSession(tx, sessionID)
 	})
 	if txErr != nil {
 		utils.RespondError(w, http.StatusInternalServerError, txErr, "failed to delete user account")
